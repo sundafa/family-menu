@@ -32,6 +32,7 @@ const categoryConfig = {
 
 const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
 const STORAGE_KEY = 'fm-state-v1';
+const DATA_VERSION = 3;
 
 // ===== 房间ID =====
 function getRoomId() {
@@ -75,6 +76,12 @@ const state = {
 function loadLocalState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    // 数据版本检查，旧版本数据清空重来
+    if (saved.version !== DATA_VERSION) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: DATA_VERSION, menu: defaultMenu, selections: {} }));
+      state.selections = {};
+      return;
+    }
     if (saved.menu) {
       // 合并：默认菜单 + 自定义菜品
       mergeMenu(state.menu, saved.menu);
@@ -85,12 +92,14 @@ function loadLocalState() {
     }
   } catch (e) {
     console.error('加载本地数据失败:', e);
+    state.selections = {};
   }
 }
 
 function saveLocalState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      version: DATA_VERSION,
       menu: state.menu,
       selections: state.selections
     }));
