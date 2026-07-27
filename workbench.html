@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Sun 工作台</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<style>
+:root{--p:#5B9BD5;--p2:#4A90D9;--p3:#357ABD;--p4:#7EC8E3;--bg:#F0F5FB;--card:#fff;--t:#2C3E50;--t2:#7F8C8D;--t3:#BDC3C7;--g:#27AE60;--o:#F39C12;--r:#E74C3C;--b:1px solid #E8EDF2;--s:0 2px 12px rgba(91,155,213,.1);--s2:0 4px 20px rgba(91,155,213,.15);--rds:14px;--rds2:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;display:flex}
+/* Sidebar */
+.sidebar{width:220px;min-height:100vh;background:linear-gradient(180deg,#4A90D9 0%,#357ABD 50%,#2C6AA0 100%);color:#fff;padding:24px 0;position:fixed;left:0;top:0;bottom:0;z-index:100;display:flex;flex-direction:column;transition:transform .3s;overflow-y:auto}
+.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:12px}
+.sidebar-logo h2{font-size:20px;font-weight:700;letter-spacing:1px}
+.sidebar-logo .sub{font-size:11px;opacity:.7;margin-top:4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;font-size:14px;color:rgba(255,255,255,.75);transition:all .2s;border-left:3px solid transparent;margin:2px 0}
+.nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.15);color:#fff;border-left-color:#fff;font-weight:600}
+.nav-item .icon{font-size:18px;width:24px;text-align:center}
+/* Main */
+.main{margin-left:220px;flex:1;padding:20px 24px;min-height:100vh}
+.section{display:none}
+.section.active{display:block}
+.section-header{margin-bottom:20px}
+.section-header h2{font-size:22px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:8px}
+.section-header .desc{font-size:13px;color:var(--t2);margin-top:4px}
+/* Date Nav */
+.date-nav{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.date-nav .cur-date{font-size:16px;font-weight:600;min-width:130px;text-align:center;color:var(--p2)}
+.date-nav .nav-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--card);box-shadow:var(--s);cursor:pointer;font-size:16px;color:var(--p);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.date-nav .nav-btn:hover{background:var(--p);color:#fff;box-shadow:var(--s2)}
+.date-nav .today-btn{padding:6px 16px;border-radius:20px;border:none;background:var(--p);color:#fff;font-size:13px;cursor:pointer;font-weight:600;transition:all .2s}
+.date-nav .today-btn:hover{background:var(--p3)}
+/* Card */
+.card{background:var(--card);border-radius:var(--rds);padding:20px;box-shadow:var(--s);margin-bottom:16px}
+.card h3{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--t);display:flex;align-items:center;gap:6px}
+/* Checkbox */
+.check-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8FAFD;border-radius:var(--rds2);margin-bottom:8px;cursor:pointer;transition:all .2s;border:2px solid transparent}
+.check-row:hover{border-color:var(--p4)}
+.check-row.done{background:#E8F5E9;border-color:var(--g)}
+.check-row.done .check-label{color:var(--g);text-decoration:line-through}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid #CBD5E1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;color:#fff;font-size:13px}
+.check-row.done .check-box{background:var(--g);border-color:var(--g)}
+.check-label{font-size:14px;flex:1}
+.exercise-note-wrap{padding:0 14px 10px 44px;margin-top:-2px}
+.exercise-note{min-height:56px;font-size:13px;border-radius:8px;background:#F8FAFD}
+/* Textarea & Input */
+textarea,input[type=text],input[type=number]{width:100%;padding:12px 14px;border:2px solid #E8EDF2;border-radius:var(--rds2);font-size:14px;font-family:inherit;resize:vertical;transition:border .2s;background:#FAFBFC;color:var(--t)}
+textarea:focus,input:focus{outline:none;border-color:var(--p);background:#fff}
+textarea{min-height:100px}
+.mood-select{display:flex;gap:8px;margin-bottom:12px}
+.mood-dot{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;font-size:20px;display:flex;align-items:center;justify-content:center;transition:all .2s;background:#fff}
+.mood-dot.selected{border-color:var(--p);transform:scale(1.15);box-shadow:0 0 0 3px rgba(91,155,213,.2)}
+.btn{padding:8px 20px;border-radius:22px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--p);color:#fff}
+.btn-primary:hover{background:var(--p3);box-shadow:var(--s2)}
+.btn-light{background:#F0F4F8;color:var(--t)}
+.btn-light:hover{background:#E2E8F0}
+.btn-sm{padding:5px 14px;font-size:12px;border-radius:16px}
+/* Calendar */
+.cal-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.cal-header .month-label{font-size:16px;font-weight:700;color:var(--p2);min-width:100px;text-align:center}
+.cal-header .cal-nav{width:30px;height:30px;border-radius:50%;border:none;background:var(--card);box-shadow:var(--s);cursor:pointer;font-size:14px;color:var(--p)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day-header{text-align:center;font-size:11px;font-weight:600;color:var(--t2);padding:6px 0}
+.cal-cell{border-radius:var(--rds2);padding:8px 4px;text-align:center;background:#FAFBFC;cursor:pointer;transition:all .2s;border:2px solid transparent;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.cal-cell:hover{border-color:var(--p4);box-shadow:var(--s)}
+.cal-cell.today{border-color:var(--p);background:#EBF3FB}
+.cal-cell.selected{border-color:var(--p2);background:#E3EEFA}
+.cal-cell.other-month{opacity:.35}
+.cal-cell .day-num{font-size:14px;font-weight:600;color:var(--t)}
+.cal-cell.today .day-num{color:var(--p)}
+.cal-cell .day-val{font-size:11px;color:var(--p2);margin-top:2px;font-weight:600}
+.cal-cell .day-val.negative{color:var(--g)}
+.cal-cell .day-val.positive{color:var(--r)}
+/* stats row */
+.stats-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.stat-card{flex:1;min-width:120px;background:var(--card);border-radius:var(--rds);padding:16px;box-shadow:var(--s);text-align:center}
+.stat-card .stat-val{font-size:24px;font-weight:700;color:var(--p);margin-bottom:4px}
+.stat-card .stat-label{font-size:12px;color:var(--t2)}
+/* chart container */
+.chart-wrap{max-width:400px;margin:12px auto}
+/* expense form */
+.exp-row{display:flex;align-items:center;gap:8px;padding:6px 0;flex-wrap:wrap}
+.exp-row .exp-label{width:80px;font-size:13px;font-weight:600;color:var(--t);flex-shrink:0}
+.exp-row input{width:100px;flex-shrink:0}
+.exp-row .exp-note{flex:1;min-width:120px;font-size:12px}
+.exp-row .exp-note input{width:100%}
+/* entries list */
+.entry-list{max-height:400px;overflow-y:auto}
+.entry-item{background:#FAFBFC;border-radius:var(--rds2);padding:14px;margin-bottom:8px;border-left:3px solid var(--p);transition:all .2s}
+.entry-item .entry-date{font-size:11px;color:var(--t2);margin-bottom:4px}
+.entry-item .entry-content{font-size:14px;color:var(--t);white-space:pre-wrap}
+.entry-item .entry-mood{font-size:18px;margin-top:4px}
+/* toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--t);color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;z-index:300;transition:transform .3s;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+/* memo modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:var(--rds);padding:24px;max-width:500px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2);max-height:80vh;overflow-y:auto}
+.modal h3{font-size:17px;margin-bottom:14px;color:var(--t)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+/* responsive */
+@media(max-width:768px){
+.sidebar{width:180px;transform:translateX(-100%)}
+.sidebar.open{transform:translateX(0)}
+.main{margin-left:0}
+.menu-toggle{position:fixed;top:16px;left:16px;z-index:110;width:40px;height:40px;border-radius:50%;background:var(--p);color:#fff;border:none;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--s2)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99;display:none}
+.overlay.show{display:block}
+}
+@media(min-width:769px){.menu-toggle{display:none}.overlay{display:none !important}}
+/* piano list */
+.list-item{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#F8FAFD;border-radius:var(--rds2);margin-bottom:6px}
+.list-item .item-name{flex:1;font-size:14px}
+.list-item .del-btn{color:var(--r);cursor:pointer;font-size:16px;opacity:.6;transition:opacity .2s}
+.list-item .del-btn:hover{opacity:1}
+.add-row{display:flex;gap:8px;margin-top:8px}
+.add-row input{flex:1}
+/* success diary entries */
+.success-entry{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:#F8FAFD;border-radius:var(--rds2);margin-bottom:8px;border-left:3px solid var(--p);animation:fadeIn .3s}
+.success-entry .entry-num{width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+.success-entry .entry-body{flex:1}
+.success-entry .entry-text{font-size:14px;color:var(--t);line-height:1.5}
+.success-entry .entry-time{font-size:11px;color:var(--t2);margin-top:2px}
+.success-entry .entry-del{color:var(--r);cursor:pointer;font-size:14px;opacity:.5;flex-shrink:0;padding:2px;transition:opacity .2s}
+.success-entry .entry-del:hover{opacity:1}
+/* trade operation item */
+.trade-op{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F8FAFD;border-radius:var(--rds2);margin-bottom:6px;flex-wrap:wrap;border-left:3px solid var(--p);animation:fadeIn .3s}
+.trade-op.buy{border-left-color:var(--r)}
+.trade-op.sell{border-left-color:var(--g)}
+.trade-op .trade-tag{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.trade-op.buy .trade-tag{background:var(--r)}
+.trade-op.sell .trade-tag{background:var(--g)}
+.trade-op .trade-info{flex:1;min-width:0;font-size:13px}
+.trade-op .trade-info .trade-name{font-weight:600;color:var(--t)}
+.trade-op .trade-info .trade-detail{color:var(--t2);font-size:12px}
+.trade-op .trade-del{color:var(--r);cursor:pointer;font-size:14px;opacity:.5;flex-shrink:0;transition:opacity .2s}
+.trade-op .trade-del:hover{opacity:1}
+/* trade form */
+.trade-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.trade-form .full{grid-column:1/-1}
+.trade-form select{padding:8px 12px;border:2px solid #E8EDF2;border-radius:var(--rds2);font-size:13px;background:#FAFBFC;color:var(--t);font-family:inherit}
+.trade-form select:focus{outline:none;border-color:var(--p)}
+/* large dialog textareas */
+.big-textarea{min-height:130px;font-size:15px;line-height:1.7;resize:vertical}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+/* qty buttons */
+.qty-row{display:flex;align-items:center;gap:6px}
+.qty-btn{width:32px;height:32px;border-radius:50%;border:2px solid #E8EDF2;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;color:var(--t);font-weight:700}
+.qty-btn:hover{background:var(--p);color:#fff;border-color:var(--p)}
+.qty-btn.minus:hover{background:var(--g);border-color:var(--g)}
+/* returns quick buttons */
+.return-quick{display:flex;gap:6px;margin-top:8px}
+.return-quick .rq-btn{padding:4px 12px;border-radius:14px;border:2px solid #E8EDF2;background:#fff;font-size:12px;cursor:pointer;transition:all .2s}
+.return-quick .rq-btn:hover{border-color:var(--p);background:#EBF3FB}
+.return-quick .rq-btn.neg:hover{border-color:var(--g);background:#E8F5E9}
+</style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'b872383113c2412ea22266e014782a35'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+
+<button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-logo"><h2>☀️ Sun 工作台</h2><div class="sub">日拱一卒，功不唐捐</div></div>
+<nav>
+<div class="nav-item active" onclick="switchSection('exercise')"><span class="icon">🏃</span>运动记录</div>
+<div class="nav-item" onclick="switchSection('piano')"><span class="icon">🎹</span>练琴记录</div>
+<div class="nav-item" onclick="switchSection('success')"><span class="icon">⭐</span>成功日记</div>
+<div class="nav-item" onclick="switchSection('reflect')"><span class="icon">💭</span>每日心得</div>
+<div class="nav-item" onclick="switchSection('finance')"><span class="icon">💰</span>理财日记</div>
+<div class="nav-item" onclick="switchSection('returns')"><span class="icon">📈</span>理财收益</div>
+<div class="nav-item" onclick="switchSection('expenses')"><span class="icon">💸</span>每日开支</div>
+<div class="nav-item" onclick="switchSection('memos')"><span class="icon">📝</span>备忘录</div>
+</nav>
+</aside>
+
+<!-- Main Content -->
+<main class="main" id="mainContent">
+<!-- sections injected by JS -->
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA ====================
+const LZ = window.LZString || { compressToEncodedURIComponent: v=>encodeURIComponent(v), decompressFromEncodedURIComponent: v=>decodeURIComponent(v) };
+
+const today = ()=>new Date().toISOString().slice(0,10);
+const formatMoney = v=>{ const n=Number(v)||0; return n>=0?'¥'+n.toFixed(2):'-¥'+Math.abs(n).toFixed(2); };
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+let appData = {};
+let currentSection = 'exercise';
+let currentDate = today();
+let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+let selectedCalDay = null;
+
+// Default finance checklist
+const defaultFinanceChecks = ['记录当日收益','核对账户余额','查看持仓变化','复盘今日操作','制定明日计划'];
+
+// Category config
+const expenseCats = [
+  {key:'food',label:'🍜 食物',color:'#FF6B6B'},
+  {key:'transport',label:'🚗 交通',color:'#4ECDC4'},
+  {key:'shopping',label:'🛍 购物',color:'#FFD93D'},
+  {key:'living',label:'🏠 生活',color:'#6C5CE7'},
+  {key:'exerciseCost',label:'🏃 运动',color:'#A8E6CF'},
+  {key:'learning',label:'📚 学习',color:'#74B9FF'},
+  {key:'medical',label:'🏥 医疗',color:'#FF8C69'},
+  {key:'entertainment',label:'🎮 娱乐',color:'#FF69B4'},
+];
+const yearExpenseCats = [
+  {key:'travel',label:'✈️ 旅行',color:'#FFD700'},
+  {key:'insurance',label:'🛡️ 保险',color:'#20B2AA'},
+  {key:'redpacket',label:'🧧 红包',color:'#FF6347'},
+];
+
+function getDefaultData(){
+  return {
+    exercise: {}, piano: {}, successDiary: {}, reflections: {},
+    finance: {}, returns: {}, expenses: {}, memos: {}, yearExpenses: {},
+    pianoChecklist: ['哈农练习','音阶琶音','练习曲','乐曲片段','视奏训练'],
+    exerciseItems: ['跑步','健身课程','抗阻训练'],
+    financeChecks: [...defaultFinanceChecks]
+  };
+}
+
+// ==================== PERSISTENCE ====================
+function loadData(){
+  const hash = location.hash;
+  if(hash && hash.includes('s=')){
+    try{
+      const s = hash.split('s=')[1];
+      const decoded = LZ.decompressFromEncodedURIComponent(s);
+      const parsed = JSON.parse(decoded);
+      appData = { ...getDefaultData(), ...parsed };
+      if(!appData.pianoChecklist) appData.pianoChecklist = ['哈农练习','音阶琶音','练习曲','乐曲片段','视奏训练'];
+      if(!appData.financeChecks) appData.financeChecks = [...defaultFinanceChecks];
+      if(!appData.exerciseItems) appData.exerciseItems = ['跑步','健身课程','抗阻训练'];
+      if(!appData.yearExpenses) appData.yearExpenses = {};
+      migrateData();
+    }catch(e){ appData = getDefaultData(); }
+  }else{
+    const raw = localStorage.getItem('sun_workbench_v1');
+    if(raw){ try{ appData = { ...getDefaultData(), ...JSON.parse(raw) }; }catch(e){ appData = getDefaultData(); } }
+    else appData = getDefaultData();
+  }
+}
+
+function migrateData(){
+  // migrate returns: number → {amount, note}
+  Object.entries(appData.returns||{}).forEach(([k,v])=>{
+    if(typeof v === 'number') appData.returns[k] = {amount:v,note:''};
+  });
+  // migrate exercise: remove old fixed keys, keep user-set keys
+  // exercise items are now defined in appData.exerciseItems
+  // old data of {running:true, fitness:false, ...} will just be ignored if exerciseItems changes
+}
+
+function saveData(){
+  localStorage.setItem('sun_workbench_v1', JSON.stringify(appData));
+  try{
+    const hash = '#/s=' + LZ.compressToEncodedURIComponent(JSON.stringify(appData));
+    if(location.hash !== hash) history.replaceState(null,'',hash);
+  }catch(e){}
+}
+
+function ensureDay(key){
+  if(!appData[key]) appData[key] = {};
+  if(!appData[key][currentDate]) appData[key][currentDate] = initDayData(key);
+  return appData[key][currentDate];
+}
+
+function initDayData(key){
+  switch(key){
+    case 'exercise': return {};
+    case 'piano': return {checks:{},journal:''};
+    case 'successDiary': return {entries:[],mood:'😊'};
+    case 'reflections': return {insights:[''],mood:'💡'};
+    case 'finance': return {operations:[],journal:''};
+    case 'returns': return {amount:0,note:''};
+    case 'expenses': return {food:0,transport:0,shopping:0,living:0,exerciseCost:0,learning:0,medical:0,entertainment:0,foodNote:'',transportNote:'',shoppingNote:'',livingNote:'',exerciseNote:'',learningNote:'',medicalNote:'',entertainmentNote:''};
+    case 'memos': return {content:''};
+    default: return {};
+  }
+}
+
+// ==================== NAV ====================
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+
+function switchSection(section){
+  currentSection = section;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[onclick="switchSection('${section}')"]`);
+  if(navItem) navItem.classList.add('active');
+  const secEl = document.getElementById('sec-'+section);
+  if(secEl) secEl.classList.add('active');
+  renderSection(section);
+  if(window.innerWidth<769) toggleSidebar();
+}
+
+// ==================== SECTION RENDER ====================
+function renderSection(section){
+  switch(section){
+    case 'exercise': renderExercise(); break;
+    case 'piano': renderPiano(); break;
+    case 'success': renderSuccessDiary(); break;
+    case 'reflect': renderReflections(); break;
+    case 'finance': renderFinance(); break;
+    case 'returns': renderReturns(); break;
+    case 'expenses': renderExpenses(); break;
+    case 'memos': renderMemos(); break;
+  }
+}
+
+function renderAllSections(){
+  const html = `
+<div class="section active" id="sec-exercise"></div>
+<div class="section" id="sec-piano"></div>
+<div class="section" id="sec-success"></div>
+<div class="section" id="sec-reflect"></div>
+<div class="section" id="sec-finance"><div class="chart-wrap"><canvas id="financeChart"></canvas></div></div>
+<div class="section" id="sec-returns"></div>
+<div class="section" id="sec-expenses"><div class="chart-wrap"><canvas id="expenseChart"></canvas></div></div>
+<div class="section" id="sec-memos"></div>
+  `;
+  document.getElementById('mainContent').innerHTML = html;
+  switchSection('exercise');
+}
+
+// ==================== DATE NAV ====================
+function dateNavHtml(extra=''){
+  const [y,m,d] = currentDate.split('-');
+  return `<div class="date-nav">
+    <button class="nav-btn" onclick="changeDate(-1)">◀</button>
+    <span class="cur-date">${y}年${m}月${d}日</span>
+    <button class="nav-btn" onclick="changeDate(1)">▶</button>
+    <button class="today-btn" onclick="goToday()">📅 今天</button>
+    ${extra}
+  </div>`;
+}
+
+function changeDate(delta){
+  const d = new Date(currentDate);
+  d.setDate(d.getDate()+delta);
+  currentDate = d.toISOString().slice(0,10);
+  renderCurrentSection();
+}
+
+function goToday(){
+  currentDate = today();
+  renderCurrentSection();
+}
+
+function renderCurrentSection(){
+  renderSection(currentSection);
+}
+
+// ==================== EXERCISE ====================
+function renderExercise(){
+  const day = ensureDay('exercise');
+  const items = appData.exerciseItems||['跑步','健身课程','抗阻训练'];
+  const emojiMap = {跑步:'🏃',健身:'💪',抗阻:'🏋️',瑜伽:'🧘',游泳:'🏊',骑行:'🚴',跳绳:'🪢',拉伸:'🤸'};
+  const html = `<div class="section-header"><h2>🏃 运动记录</h2><div class="desc">动起来就很好，完成任意一项就很棒</div></div>
+  ${dateNavHtml()}
+  <div class="card"><h3>今日运动项目</h3>
+    ${items.map((name,i)=>{
+      const key = 'item_'+i;
+      const done = !!day[key];
+      const emoji = Object.entries(emojiMap).find(([k])=>name.includes(k))?.[1] || '✅';
+      return `<div>
+      <div class="check-row${done?' done':''}" onclick="toggleExercise('${key}')">
+        <div class="check-box">${done?'✓':''}</div>
+        <span class="check-label">${emoji} ${name}</span>
+        ${done?`<span style="font-size:12px;color:var(--g)">完成 ✅</span>`:''}
+      </div>
+      ${done?`<div class="exercise-note-wrap">
+        <textarea class="exercise-note" id="exNote_${key}" placeholder="记录一下..." onblur="saveExerciseNote('${key}',this.value)">${day[key+'_note']||''}</textarea>
+      </div>`:''}
+    </div>`;
+    }).join('')}
+    <div class="add-row">
+      <input type="text" id="newExerciseItem" placeholder="添加运动项目...">
+      <button class="btn btn-primary btn-sm" onclick="addExerciseItem()">＋ 添加</button>
+    </div>
+  </div>
+  <div class="card"><h3>📊 本周运动统计</h3>${renderExerciseStats()}</div>`;
+  setSectionHTML('sec-exercise',html);
+}
+
+function toggleExercise(key){
+  const day = ensureDay('exercise');
+  day[key] = !day[key];
+  if(!day[key]) day[key+'_note'] = '';
+  saveData();
+  renderExercise();
+  toast(day[key]?'完成一项就很棒！💪':'已取消，下次加油哦');
+}
+
+function saveExerciseNote(key,val){
+  const day = ensureDay('exercise');
+  day[key+'_note'] = val;
+  saveData();
+}
+
+function addExerciseItem(){
+  const input = document.getElementById('newExerciseItem');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!appData.exerciseItems) appData.exerciseItems = ['跑步','健身课程','抗阻训练'];
+  appData.exerciseItems.push(val);
+  saveData();
+  renderExercise();
+  toast('已添加：'+val);
+}
+
+function renderExerciseStats(){
+  const weekStart = new Date(currentDate);
+  const dayOfWeek = weekStart.getDay()||7;
+  weekStart.setDate(weekStart.getDate()-dayOfWeek+1);
+  let total=0, days=0;
+  const labels=['一','二','三','四','五','六','日'];
+  let bars='';
+  for(let i=0;i<7;i++){
+    const d = new Date(weekStart);
+    d.setDate(d.getDate()+i);
+    const dk = d.toISOString().slice(0,10);
+    const ed = (appData.exercise||{})[dk];
+    let cnt = 0;
+    if(ed){
+      const items = appData.exerciseItems||['跑步','健身课程','抗阻训练'];
+      for(let j=0;j<items.length;j++){
+        if(ed['item_'+j]) cnt++;
+      }
+    }
+    if(cnt>0){ total+=cnt; days++; }
+    const h = cnt*28;
+    const isToday = dk===currentDate;
+    bars+=`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div style="width:32px;height:${Math.max(h,8)}px;background:${isToday?'var(--p)':h?'var(--p4)':'#E8EDF2'};border-radius:6px 6px 0 0;transition:all .3s"></div>
+      <span style="font-size:10px;color:var(--t2)">${labels[i]}</span>
+      <span style="font-size:10px;font-weight:600;color:${cnt?'var(--p)':'var(--t3)'}">${cnt}项</span>
+    </div>`;
+  }
+  return `<div style="display:flex;justify-content:space-around;align-items:flex-end;height:100px;padding:0 8px">${bars}</div>
+    <div style="text-align:center;margin-top:12px;font-size:13px;color:var(--t2)">本周共完成 <b style="color:var(--p);font-size:18px">${total}</b> 项运动 · 打卡 <b style="color:var(--p);font-size:18px">${days}</b> 天</div>`;
+}
+
+// ==================== PIANO ====================
+function renderPiano(){
+  const day = ensureDay('piano');
+  if(!day.checks) day.checks = {};
+  const items = appData.pianoChecklist||['哈农练习'];
+  const html = `<div class="section-header"><h2>🎹 练琴记录</h2><div class="desc">每日精进，指尖生花</div></div>
+  ${dateNavHtml()}
+  <div class="card"><h3>🎼 练习清单</h3>
+    ${items.map((it,i)=>`<div class="list-item">
+      <div class="check-box" style="cursor:pointer" onclick="togglePianoCheck(${i})">${(day.checks[i]?'✓':'')}</div>
+      <span class="item-name" style="${day.checks[i]?'text-decoration:line-through;color:var(--g)':''}">${it}</span>
+      <span class="del-btn" onclick="removePianoItem(${i})" title="删除">✕</span>
+    </div>`).join('')}
+    <div class="add-row">
+      <input type="text" id="newPianoItem" placeholder="添加练习项目...">
+      <button class="btn btn-primary btn-sm" onclick="addPianoItem()">＋ 添加</button>
+    </div>
+  </div>
+  <div class="card"><h3>📝 练琴心得</h3>
+    <textarea id="pianoJournal" placeholder="今天练琴的收获和感受...">${day.journal||''}</textarea>
+    <div style="margin-top:10px;text-align:right"><button class="btn btn-primary btn-sm" onclick="savePianoJournal()">💾 保存心得</button></div>
+  </div>
+  <div class="card"><h3>📊 本月练琴统计</h3>${renderPianoMonthStats()}</div>`;
+  setSectionHTML('sec-piano',html);
+}
+
+function togglePianoCheck(i){
+  const day = ensureDay('piano');
+  if(!day.checks) day.checks = {};
+  day.checks[i] = !day.checks[i];
+  saveData();
+  renderPiano();
+}
+
+function addPianoItem(){
+  const input = document.getElementById('newPianoItem');
+  const val = input.value.trim();
+  if(!val) return;
+  appData.pianoChecklist.push(val);
+  saveData();
+  renderPiano();
+  toast('已添加：'+val);
+}
+
+function removePianoItem(i){
+  if(!confirm('确定删除这项练习吗？')) return;
+  appData.pianoChecklist.splice(i,1);
+  const day = ensureDay('piano');
+  if(day.checks) delete day.checks[i];
+  saveData();
+  renderPiano();
+}
+
+function savePianoJournal(){
+  const day = ensureDay('piano');
+  day.journal = document.getElementById('pianoJournal').value;
+  saveData();
+  toast('心得已保存 💾');
+}
+
+function renderPianoMonthStats(){
+  const [y,m] = currentDate.split('-');
+  const items = appData.pianoChecklist||['哈农练习'];
+  let days=0, totalItems=0;
+  const dayBars = [];
+  for(let i=1;i<=new Date(+y,+m,0).getDate();i++){
+    const dk = `${y}-${m}-${String(i).padStart(2,'0')}`;
+    const pd = (appData.piano||{})[dk];
+    if(!pd||!pd.checks) continue;
+    let cnt=0;
+    for(let j=0;j<items.length;j++){ if(pd.checks[j]) cnt++; }
+    if(cnt>0){ days++; totalItems+=cnt; dayBars.push({day:i,count:cnt}); }
+  }
+  const avg = days>0 ? (totalItems/days).toFixed(1) : '0';
+  const now = new Date();
+  const todayDay = +currentDate.slice(8,10);
+  const isCurrentMonth = y===String(now.getFullYear()) && m===String(now.getMonth()+1).padStart(2,'0');
+  if(!isCurrentMonth && !days) return '<div style="text-align:center;color:var(--t2);padding:16px">该月暂无练琴记录</div>';
+
+  // Show day chart (compact bar)
+  let barsHtml = '';
+  const monthDays = new Date(+y,+m,0).getDate();
+  for(let i=1;i<=monthDays;i++){
+    const dk = `${y}-${m}-${String(i).padStart(2,'0')}`;
+    const pd = (appData.piano||{})[dk];
+    let cnt=0;
+    if(pd&&pd.checks){
+      for(let j=0;j<items.length;j++){ if(pd.checks[j]) cnt++; }
+    }
+    const isToday = isCurrentMonth && i===todayDay;
+    const h = Math.max(cnt*10,3);
+    barsHtml+=`<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+      <div style="width:${Math.max(100/monthDays*0.6,4)}px;height:${h}px;background:${isToday?'var(--p)':cnt?'var(--p4)':'#E8EDF2'};border-radius:3px 3px 0 0;min-height:3px"></div>
+    </div>`;
+  }
+
+  return `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+    <div class="stat-card" style="flex:1;min-width:80px"><div class="stat-val" style="color:var(--p)">${days}</div><div class="stat-label">练琴天数</div></div>
+    <div class="stat-card" style="flex:1;min-width:80px"><div class="stat-val" style="color:var(--p)">${totalItems}</div><div class="stat-label">完成项数</div></div>
+    <div class="stat-card" style="flex:1;min-width:80px"><div class="stat-val" style="color:var(--p)">${avg}</div><div class="stat-label">日均完成</div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;height:60px;padding:0 2px;gap:1px">${barsHtml}</div>
+  <div style="display:flex;justify-content:space-between;padding:0 2px;margin-top:4px;gap:1px">
+    <span style="font-size:9px;color:var(--t3)">1日</span><span style="font-size:9px;color:var(--t3)">${monthDays}日</span>
+  </div>`;
+}
+
+// ==================== SUCCESS DIARY ====================
+function renderSuccessDiary(){
+  const day = ensureDay('successDiary');
+  if(!day.entries) day.entries = [];
+  if(!day.mood) day.mood = '😊';
+  const moods = ['😊','🎉','💪','🌟','🔥','🥳'];
+  const now = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+  const html = `<div class="section-header"><h2>⭐ 今日成功日记</h2><div class="desc">记录今天的每一点成就</div></div>
+  ${dateNavHtml()}
+  <div class="card">
+    <h3>今天的心情</h3>
+    <div class="mood-select">${moods.map(m=>`<div class="mood-dot${day.mood===m?' selected':''}" onclick="setSuccessMood('${m}')">${m}</div>`).join('')}</div>
+  </div>
+  <div class="card">
+    <h3>✍️ 添加成功事件</h3>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="successInput" placeholder="例如：今天完成了一次5公里跑步 🏃" style="flex:1" onkeydown="if(event.key==='Enter')addSuccessEntry()">
+      <button class="btn btn-primary btn-sm" onclick="addSuccessEntry()">＋ 添加</button>
+    </div>
+    <div style="margin-top:14px" id="successEntries">
+      ${day.entries.length===0?'<div style="text-align:center;color:var(--t2);padding:20px">今天还没有记录，开始写吧 ✍️</div>':''}
+      ${day.entries.map((e,i)=>`<div class="success-entry">
+        <div class="entry-num">${i+1}</div>
+        <div class="entry-body">
+          <div class="entry-text">${e.content}</div>
+          <div class="entry-time">${e.time||''}</div>
+        </div>
+        <div class="entry-del" onclick="delSuccessEntry(${i})" title="删除">✕</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="card"><h3>📜 成功日记时光轴</h3>${renderSuccessTimeline()}</div>`;
+  setSectionHTML('sec-success',html);
+}
+
+function addSuccessEntry(){
+  const input = document.getElementById('successInput');
+  const val = input.value.trim();
+  if(!val) return;
+  const day = ensureDay('successDiary');
+  if(!day.entries) day.entries = [];
+  day.entries.push({id:uid(),content:val,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
+  input.value = '';
+  saveData();
+  renderSuccessDiary();
+}
+
+function delSuccessEntry(i){
+  const day = ensureDay('successDiary');
+  day.entries.splice(i,1);
+  saveData();
+  renderSuccessDiary();
+}
+
+function setSuccessMood(mood){
+  const day = ensureDay('successDiary');
+  day.mood = mood;
+  saveData();
+  renderSuccessDiary();
+}
+
+function renderSuccessTimeline(){
+  const entries = [];
+  Object.entries(appData.successDiary||{}).forEach(([d,v])=>{
+    if(v.entries && v.entries.length>0) entries.push({date:d,mood:v.mood||'😊',count:v.entries.length,items:v.entries});
+  });
+  entries.sort((a,b)=>b.date.localeCompare(a.date));
+  if(!entries.length) return '<div style="text-align:center;color:var(--t2);padding:20px">还没有记录，开始写吧 ✍️</div>';
+  return '<div class="entry-list">'+entries.slice(0,20).map(e=>`<div class="entry-item">
+    <div class="entry-date">📅 ${e.date} <span class="entry-mood">${e.mood}</span> · ${e.count} 件事</div>
+    <div class="entry-content">${e.items.map(it=>'✅ '+it.content).join('<br>')}</div>
+  </div>`).join('')+'</div>';
+}
+
+// ==================== REFLECTIONS ====================
+function renderReflections(){
+  const day = ensureDay('reflections');
+  if(!day.insights || !Array.isArray(day.insights)) day.insights = [''];
+  const moods = ['💡','🤔','😌','🌈','❤️','✨'];
+  if(!day.mood) day.mood = '💡';
+
+  const boxes = day.insights.map((val,i)=>{
+    const num = ['一','二','三','四','五','六'][i]||(i+1);
+    return `<div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <h3 style="margin:0">💡 今日感悟 · ${num}</h3>
+        ${day.insights.length>1?`<button class="btn btn-light btn-sm" onclick="removeInsightBox(${i})" style="color:var(--t2);font-size:12px;padding:4px 10px">✕ 删除</button>`:''}
+      </div>
+      <textarea class="big-textarea" id="reflect_${i}" placeholder="写点什么...">${val||''}</textarea>
+    </div>`;
+  }).join('');
+
+  const html = `<div class="section-header"><h2>💭 每日心得</h2><div class="desc">沉淀思考，记录成长</div></div>
+  ${dateNavHtml()}
+  <div class="card">
+    <h3>今天的心情</h3>
+    <div class="mood-select">${moods.map(m=>`<div class="mood-dot${day.mood===m?' selected':''}" onclick="setReflectMood('${m}')">${m}</div>`).join('')}</div>
+  </div>
+  ${boxes}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <button class="btn btn-light" onclick="addInsightBox()" style="color:var(--p);border:2px dashed var(--p4)">＋ 再写一条感悟</button>
+    <button class="btn btn-primary" onclick="saveReflections()">💾 全部保存</button>
+  </div>
+  <div class="card"><h3>📜 心得时光轴</h3>${renderReflectTimeline()}</div>`;
+  setSectionHTML('sec-reflect',html);
+}
+
+function addInsightBox(){
+  const day = ensureDay('reflections');
+  if(!day.insights || !Array.isArray(day.insights)) day.insights = [''];
+  const max = 6;
+  if(day.insights.length >= max){toast(`最多 ${max} 条感悟`);return;}
+  // save existing content first
+  for(let i=0;i<day.insights.length;i++){
+    const el = document.getElementById('reflect_'+i);
+    if(el) day.insights[i] = el.value;
+  }
+  day.insights.push('');
+  saveData();
+  renderReflections();
+}
+
+function removeInsightBox(idx){
+  const day = ensureDay('reflections');
+  if(!day.insights || !Array.isArray(day.insights) || day.insights.length <= 1) return;
+  // save existing
+  for(let i=0;i<day.insights.length;i++){
+    const el = document.getElementById('reflect_'+i);
+    if(el) day.insights[i] = el.value;
+  }
+  day.insights.splice(idx,1);
+  saveData();
+  renderReflections();
+}
+
+function saveReflections(){
+  const day = ensureDay('reflections');
+  if(!day.insights || !Array.isArray(day.insights)) day.insights = [''];
+  for(let i=0;i<day.insights.length;i++){
+    const el = document.getElementById('reflect_'+i);
+    if(el) day.insights[i] = el.value;
+  }
+  // remove trailing empties (keep at least 1)
+  while(day.insights.length>1 && !day.insights[day.insights.length-1].trim()){
+    day.insights.pop();
+  }
+  saveData();
+  toast('心得已保存 ✨');
+}
+
+function setReflectMood(mood){
+  const day = ensureDay('reflections');
+  day.mood = mood;
+  saveData();
+  renderReflections();
+}
+
+function renderReflectTimeline(){
+  const entries = [];
+  Object.entries(appData.reflections||{}).forEach(([d,v])=>{
+    let content = '';
+    if(v.insights && Array.isArray(v.insights)){
+      content = v.insights.filter(s=>s&&s.trim()).map((s,i)=>`💡 ${s.slice(0,80)}${s.length>80?'...':''}`).join('<br>');
+    }
+    // migrate old single-insight format
+    if(!content && v.insight && v.insight.trim()){
+      content = '💡 '+v.insight.slice(0,80)+(v.insight.length>80?'...':'');
+    }
+    if(content) entries.push({date:d,mood:v.mood||'💡',content});
+  });
+  entries.sort((a,b)=>b.date.localeCompare(a.date));
+  if(!entries.length) return '<div style="text-align:center;color:var(--t2);padding:20px">还没有记录，开始写吧 ✍️</div>';
+  return '<div class="entry-list">'+entries.slice(0,20).map(e=>`<div class="entry-item">
+    <div class="entry-date">📅 ${e.date} <span class="entry-mood">${e.mood}</span></div>
+    <div class="entry-content">${e.content}</div>
+  </div>`).join('')+'</div>';
+}
+
+// ==================== FINANCE DIARY (Trading Log) ====================
+let financeChartInst = null;
+function renderFinance(){
+  const day = ensureDay('finance');
+  if(!day.operations) day.operations = [];
+  const html = `<div class="section-header"><h2>💰 理财日记</h2><div class="desc">记录每一笔操作，复盘每一次决策</div></div>
+  ${dateNavHtml()}
+  <div class="card"><h3>📊 今日操作概览</h3>${renderFinanceStats()}</div>
+  <div class="card">
+    <h3>✍️ 添加操作记录</h3>
+    <div class="trade-form">
+      <select id="tradeType"><option value="buy">🔴 买入</option><option value="sell">🟢 卖出</option></select>
+      <input type="text" id="tradeName" placeholder="标的名称（如：贵州茅台）">
+      <input type="number" id="tradeAmount" placeholder="数量（股/份）" step="1" class="qty-input">
+      <input type="number" id="tradePrice" placeholder="单价（元）" step="0.01">
+      <input type="text" id="tradeNote" placeholder="备注（选填）" class="full">
+      <button class="btn btn-primary full" onclick="addTradeOp()" style="justify-content:center">＋ 添加操作</button>
+    </div>
+    <div id="tradeOps">
+      ${day.operations.length===0?'<div style="text-align:center;color:var(--t2);padding:20px">今天还没有操作记录</div>':''}
+      ${day.operations.map((op,i)=>`<div class="trade-op ${op.type}">
+        <span class="trade-tag">${op.type==='buy'?'买入':'卖出'}</span>
+        <div class="trade-info">
+          <div class="trade-name">${op.name}</div>
+          <div class="trade-detail">${op.amount}${op.amount>=100?'股':'份'} × ¥${op.price} = ¥${(op.amount*op.price).toFixed(2)} ${op.note?'· '+op.note:''}</div>
+        </div>
+        <div class="trade-del" onclick="delTradeOp(${i})" title="删除">✕</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <h3>📊 操作分类统计</h3>
+    <div class="chart-wrap"><canvas id="financeChart"></canvas></div>
+  </div>
+  <div class="card"><h3>💡 理财心得</h3>
+    <textarea id="financeJournal" class="big-textarea" placeholder="今天的理财感悟、市场观察、操作反思...">${day.journal||''}</textarea>
+    <div style="margin-top:10px;text-align:right"><button class="btn btn-primary btn-sm" onclick="saveFinanceJournal()">💾 保存心得</button></div>
+  </div>`;
+  setSectionHTML('sec-finance',html);
+  setTimeout(()=>drawFinancePieFromOps(day.operations),100);
+}
+
+function addTradeOp(){
+  const type = document.getElementById('tradeType').value;
+  const name = document.getElementById('tradeName').value.trim();
+  const amount = parseInt(document.getElementById('tradeAmount').value)||0;
+  const price = parseFloat(document.getElementById('tradePrice').value)||0;
+  const note = document.getElementById('tradeNote').value.trim();
+  if(!name){ toast('请输入标的名称'); return; }
+  if(!amount||!price){ toast('请输入数量和单价'); return; }
+  const day = ensureDay('finance');
+  if(!day.operations) day.operations = [];
+  day.operations.push({id:uid(),type,name,amount,price,note,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
+  saveData();
+  renderFinance();
+  toast(type==='buy'?'已记录买入 📈':'已记录卖出 📉');
+}
+
+function delTradeOp(i){
+  const day = ensureDay('finance');
+  day.operations.splice(i,1);
+  saveData();
+  renderFinance();
+}
+
+function renderFinanceStats(){
+  const day = (appData.finance||{})[currentDate];
+  if(!day||!day.operations||day.operations.length===0){
+    return '<div style="text-align:center;color:var(--t2);padding:12px">暂无操作，添加第一条吧 📝</div>';
+  }
+  let buyTotal=0, sellTotal=0, buyCount=0, sellCount=0;
+  day.operations.forEach(op=>{
+    const val = op.amount*op.price;
+    if(op.type==='buy'){ buyTotal+=val; buyCount++; }
+    else{ sellTotal+=val; sellCount++; }
+  });
+  return `<div class="stats-row">
+    <div class="stat-card"><div class="stat-val" style="color:var(--r)">¥${buyTotal.toFixed(0)}</div><div class="stat-label">买入金额 (${buyCount}笔)</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--g)">¥${sellTotal.toFixed(0)}</div><div class="stat-label">卖出金额 (${sellCount}笔)</div></div>
+    <div class="stat-card"><div class="stat-val">${buyCount+sellCount} 笔</div><div class="stat-label">总操作数</div></div>
+  </div>`;
+}
+
+function drawFinancePieFromOps(ops){
+  const ctx = document.getElementById('financeChart');
+  if(!ctx) return;
+  if(financeChartInst) financeChartInst.destroy();
+  if(!ops||ops.length===0){
+    financeChartInst = new Chart(ctx,{
+      type:'doughnut',
+      data:{labels:['暂无操作'],datasets:[{data:[1],backgroundColor:['#E8EDF2'],borderWidth:0}]},
+      options:{responsive:true,plugins:{legend:{display:false}},cutout:'65%'}
+    });
+    return;
+  }
+  let buyVal=0, sellVal=0;
+  ops.forEach(op=>{
+    const v=op.amount*op.price;
+    if(op.type==='buy') buyVal+=v; else sellVal+=v;
+  });
+  financeChartInst = new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['买入','卖出'],
+      datasets:[{data:[buyVal,sellVal],backgroundColor:['#FF6B6B','#27AE60'],borderWidth:0,borderRadius:6}]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:13}}}},
+      cutout:'65%'
+    }
+  });
+}
+
+function saveFinanceJournal(){
+  const day = ensureDay('finance');
+  day.journal = document.getElementById('financeJournal').value;
+  saveData();
+  toast('心得已保存 💾');
+}
+
+// ==================== RETURNS ====================
+function renderReturns(){
+  const rd = (appData.returns||{})[currentDate] || {amount:0,note:''};
+  if(typeof rd === 'number'){ appData.returns[currentDate] = {amount:rd,note:''}; }
+  const dayVal = rd.amount||0;
+  const html = `<div class="section-header"><h2>📈 理财收益</h2><div class="desc">关注收益，稳健增长</div></div>
+  ${dateNavHtml()}
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" style="color:${getReturnsStats().day>=0?'var(--r)':'var(--g)'}">${formatMoney(getReturnsStats().day)}</div><div class="stat-label">今日收益</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${getReturnsStats().month>=0?'var(--r)':'var(--g)'}">${formatMoney(getReturnsStats().month)}</div><div class="stat-label">本月收益</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${getReturnsStats().year>=0?'var(--r)':'var(--g)'}">${formatMoney(getReturnsStats().year)}</div><div class="stat-label">本年收益</div></div>
+  </div>
+  <div class="card">
+    <h3>💰 今日收益录入</h3>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:8px">💡 正数=盈利，负数(输入 -) =亏损</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <input type="number" id="returnInput" value="${dayVal||0}" placeholder="±收益金额" style="width:160px;font-size:18px;text-align:center" step="0.01">
+      <button class="btn btn-primary" onclick="saveReturn()">💾 保存</button>
+    </div>
+    <div class="return-quick">
+      <span style="font-size:12px;color:var(--t2);line-height:28px">快捷：</span>
+      <button class="rq-btn" onclick="quickReturn(100)">+100</button>
+      <button class="rq-btn" onclick="quickReturn(500)">+500</button>
+      <button class="rq-btn" onclick="quickReturn(1000)">+1000</button>
+      <button class="rq-btn neg" onclick="quickReturn(-100)">-100</button>
+      <button class="rq-btn neg" onclick="quickReturn(-500)">-500</button>
+    </div>
+    <div style="margin-top:10px">
+      <textarea id="returnNote" placeholder="收益备注（如：来自XX分红、XX卖出）" style="min-height:52px">${rd.note||''}</textarea>
+    </div>
+  </div>
+  ${renderCalHtml('returns',dayVal)}
+  <div class="card"><h3>📊 月度收益走势</h3><div class="chart-wrap"><canvas id="returnsBarChart"></canvas></div></div>`;
+  setSectionHTML('sec-returns',html);
+  setTimeout(drawReturnsBar,100);
+}
+
+function getReturnsStats(){
+  const [y,m]=currentDate.split('-');
+  const rd = (appData.returns||{})[currentDate];
+  let dayVal = rd ? (typeof rd==='number'?rd:rd.amount||0) : 0;
+  let monthVal=0, yearVal=0;
+  Object.entries(appData.returns||{}).forEach(([d,v])=>{
+    const amt = typeof v==='number' ? v : (v.amount||0);
+    if(d.startsWith(y+'-'+m)) monthVal+=amt;
+    if(d.startsWith(y+'-')) yearVal+=amt;
+  });
+  return {day:dayVal,month:monthVal,year:yearVal};
+}
+
+function saveReturn(){
+  const val = parseFloat(document.getElementById('returnInput').value)||0;
+  const note = document.getElementById('returnNote').value;
+  if(!appData.returns) appData.returns = {};
+  appData.returns[currentDate] = {amount:val,note};
+  saveData();
+  renderReturns();
+  toast(val>=0?'收益已保存 📈':'亏损已记录 📉');
+}
+
+function quickReturn(val){
+  const input = document.getElementById('returnInput');
+  const cur = parseFloat(input.value)||0;
+  input.value = cur + val;
+  input.focus();
+}
+
+function drawReturnsBar(){
+  const ctx = document.getElementById('returnsBarChart');
+  if(!ctx) return;
+  const [y,m]=currentDate.split('-');
+  const daysInMonth = new Date(+y,+m,0).getDate();
+  const labels=[],data=[];
+  for(let i=1;i<=daysInMonth;i++){
+    const dk = `${y}-${m}-${String(i).padStart(2,'0')}`;
+    labels.push(i+'日');
+    const v = (appData.returns||{})[dk];
+    const amt = typeof v==='number' ? v : (v&&v.amount?v.amount:0);
+    data.push(amt);
+  }
+  new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:data.map(v=>v>=0?'#FF6B6B':'#27AE60'),borderRadius:4}]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:'#f0f0f0'}}}
+    }
+  });
+}
+
+// ==================== EXPENSES ====================
+function renderExpenses(){
+  const day = ensureDay('expenses');
+  const [y] = currentDate.split('-');
+  const yeData = (appData.yearExpenses||{})[y] || {};
+  const html = `<div class="section-header"><h2>💸 每日开支</h2><div class="desc">理性消费，智慧生活</div></div>
+  ${dateNavHtml()}
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" style="color:var(--r)">${formatMoney(getExpenseStats().day)}</div><div class="stat-label">今日支出</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--r)">${formatMoney(getExpenseStats().month)}</div><div class="stat-label">本月支出</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--r)">${formatMoney(getExpenseStats().year)}</div><div class="stat-label">本年支出</div></div>
+  </div>
+  <div class="card"><h3>📝 日常支出明细</h3>
+    ${expenseCats.map(c=>`<div class="exp-row">
+      <span class="exp-label">${c.label}</span>
+      <input type="number" id="exp_${c.key}" value="${day[c.key]||0}" placeholder="金额" step="0.01">
+      <span class="exp-note"><input type="text" id="expNote_${c.key}" value="${day[c.key+'Note']||''}" placeholder="备注"></span>
+    </div>`).join('')}
+    <div style="text-align:right;margin-top:10px"><button class="btn btn-primary btn-sm" onclick="saveExpenses()">💾 保存</button></div>
+  </div>
+  <div class="card"><h3>📊 日常支出占比</h3><div class="chart-wrap"><canvas id="expenseChart"></canvas></div></div>
+  ${renderCalHtml('expenses',getExpenseStats().day)}
+  <div class="card"><h3>📅 年度大额支出</h3>
+    ${yearExpenseCats.map(c=>`<div class="exp-row">
+      <span class="exp-label">${c.label}</span>
+      <input type="number" id="ye_${c.key}" value="${yeData[c.key]||0}" placeholder="金额" step="0.01">
+      <span class="exp-note"><input type="text" id="yeNote_${c.key}" value="${yeData[c.key+'Note']||''}" placeholder="备注"></span>
+    </div>`).join('')}
+    <div style="text-align:right;margin-top:10px"><button class="btn btn-primary btn-sm" onclick="saveYearExpenses()">💾 保存</button></div>
+  </div>
+  <div class="card"><h3>📊 月度支出走势</h3><div class="chart-wrap"><canvas id="expenseBarChart"></canvas></div></div>`;
+  setSectionHTML('sec-expenses',html);
+  setTimeout(()=>{drawExpensePie();drawExpenseBar();},100);
+}
+
+function saveYearExpenses(){
+  const [y] = currentDate.split('-');
+  if(!appData.yearExpenses) appData.yearExpenses = {};
+  if(!appData.yearExpenses[y]) appData.yearExpenses[y] = {};
+  yearExpenseCats.forEach(c=>{
+    appData.yearExpenses[y][c.key] = parseFloat(document.getElementById('ye_'+c.key).value)||0;
+    appData.yearExpenses[y][c.key+'Note'] = document.getElementById('yeNote_'+c.key).value;
+  });
+  saveData();
+  toast('年度支出已保存 💾');
+}
+
+function getExpenseStats(){
+  const [y,m]=currentDate.split('-');
+  const day = (appData.expenses||{})[currentDate];
+  let dayVal=0;
+  if(day) expenseCats.forEach(c=>{ dayVal+=Number(day[c.key])||0; });
+  let monthVal=0, yearVal=0;
+  Object.entries(appData.expenses||{}).forEach(([d,v])=>{
+    let dv=0;
+    expenseCats.forEach(c=>{ dv+=Number(v[c.key])||0; });
+    if(d.startsWith(y+'-'+m)) monthVal+=dv;
+    if(d.startsWith(y+'-')) yearVal+=dv;
+  });
+  // Add yearly expenses to year total
+  const yeData = (appData.yearExpenses||{})[y] || {};
+  yearExpenseCats.forEach(c=>{ yearVal+=Number(yeData[c.key])||0; });
+  return {day:dayVal,month:monthVal,year:yearVal};
+}
+
+function saveExpenses(){
+  const day = ensureDay('expenses');
+  expenseCats.forEach(c=>{
+    day[c.key] = parseFloat(document.getElementById('exp_'+c.key).value)||0;
+    day[c.key+'Note'] = document.getElementById('expNote_'+c.key).value;
+  });
+  saveData();
+  renderExpenses();
+  toast('支出已保存 💾');
+}
+
+function drawExpensePie(){
+  const ctx = document.getElementById('expenseChart');
+  if(!ctx) return;
+  const day = (appData.expenses||{})[currentDate]||{};
+  const vals = expenseCats.map(c=>Number(day[c.key])||0);
+  if(vals.every(v=>v===0)){
+    vals[0]=1;
+    expenseCats[0].label='暂无支出';
+  }
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:expenseCats.map(c=>c.label),
+      datasets:[{data:vals,backgroundColor:expenseCats.map(c=>c.color),borderWidth:0,borderRadius:4}]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:12}}}},
+      cutout:'60%'
+    }
+  });
+}
+
+function drawExpenseBar(){
+  const ctx = document.getElementById('expenseBarChart');
+  if(!ctx) return;
+  const [y,m]=currentDate.split('-');
+  const daysInMonth = new Date(+y,+m,0).getDate();
+  const labels=[],data=[];
+  for(let i=1;i<=daysInMonth;i++){
+    const dk = `${y}-${m}-${String(i).padStart(2,'0')}`;
+    labels.push(i+'日');
+    const ed = (appData.expenses||{})[dk];
+    let dv=0;
+    if(ed) expenseCats.forEach(c=>{ dv+=Number(ed[c.key])||0; });
+    data.push(dv);
+  }
+  new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{data,backgroundColor:'#5B9BD5',borderRadius:4}]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{y:{grid:{color:'#f0f0f0'}}}
+    }
+  });
+}
+
+// ==================== CALENDAR COMPONENT ====================
+function renderCalHtml(dataKey, todayVal){
+  const [y,m]=currentDate.split('-');
+  calYear = +y; calMonth = +m-1;
+  selectedCalDay = currentDate;
+  const daysInMonth = new Date(calYear,calMonth+1,0).getDate();
+  const firstDay = new Date(calYear,calMonth,1).getDay()||7;
+  const prevDays = new Date(calYear,calMonth,0).getDate();
+  const todayStr = today();
+  let cells = '';
+  // day headers
+  const dayHeaders = ['一','二','三','四','五','六','日'];
+  // prev month
+  for(let i=firstDay-1;i>0;i--){
+    const d = prevDays-i+1;
+    const prevM = calMonth===0?12:calMonth;
+    const prevY = calMonth===0?calYear-1:calYear;
+    const dk = `${prevY}-${String(prevM).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cells+=`<div class="cal-cell other-month" onclick="selectCalDay('${dk}')"><div class="day-num">${d}</div></div>`;
+  }
+  // current month
+  for(let i=1;i<=daysInMonth;i++){
+    const dk = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    const isToday = dk===todayStr;
+    const isSelected = dk===selectedCalDay;
+    const val = getCalCellVal(dataKey,dk);
+    cells+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dk}')">
+      <div class="day-num">${i}</div>
+      ${val!==null?`<div class="day-val${typeof val==='number'?val>=0?' positive':' negative':''}">${typeof val==='number'?formatMoney(Math.abs(val)):val}</div>`:''}
+    </div>`;
+  }
+  // next month
+  const remaining = 42 - (firstDay-1+daysInMonth);
+  for(let i=1;i<=remaining;i++){
+    const nextM = calMonth===11?1:calMonth+2;
+    const nextY = calMonth===11?calYear+1:calYear;
+    const dk = `${nextY}-${String(nextM).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    cells+=`<div class="cal-cell other-month" onclick="selectCalDay('${dk}')"><div class="day-num">${i}</div></div>`;
+  }
+  const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  return `<div class="card"><h3>📅 月度日历</h3>
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrevMonth('${dataKey}')">◀</button>
+      <span class="month-label">${calYear}年 ${monthNames[calMonth]}</span>
+      <button class="cal-nav" onclick="calNextMonth('${dataKey}')">▶</button>
+    </div>
+    <div class="cal-grid">
+      ${dayHeaders.map(h=>`<div class="cal-day-header">${h}</div>`).join('')}
+      ${cells}
+    </div>
+  </div>`;
+}
+
+function getCalCellVal(key,dk){
+  const data = appData[key];
+  if(!data||!data[dk]) return null;
+  if(key==='returns'){ const v=data[dk]; return typeof v==='number'?v:(v.amount||0); }
+  if(key==='expenses'){
+    let t=0;
+    expenseCats.forEach(c=>{ t+=Number(data[dk][c.key])||0; });
+    return t===0?null:-t;
+  }
+  if(key==='memos') return data[dk].content?'📝':'';
+  return null;
+}
+
+function calPrevMonth(dataKey){
+  calMonth--;
+  if(calMonth<0){ calMonth=11; calYear--; }
+  renderCurrentSection();
+}
+
+function calNextMonth(dataKey){
+  calMonth++;
+  if(calMonth>11){ calMonth=0; calYear++; }
+  renderCurrentSection();
+}
+
+function selectCalDay(dk){
+  currentDate = dk;
+  renderCurrentSection();
+}
+
+// ==================== MEMOS ====================
+function renderMemos(){
+  const day = ensureDay('memos');
+  const html = `<div class="section-header"><h2>📝 备忘录</h2><div class="desc">重要的、琐碎的，都记下来</div></div>
+  ${dateNavHtml()}
+  <div class="card">
+    <h3>📝 ${currentDate} 备忘录</h3>
+    <textarea id="memoContent" placeholder="记录今天的备忘事项...">${day.content||''}</textarea>
+    <div style="margin-top:10px;text-align:right"><button class="btn btn-primary btn-sm" onclick="saveMemo()">💾 保存</button></div>
+  </div>
+  ${renderCalHtml('memos','')}
+  <div class="card"><h3>📜 近期备忘</h3>${renderMemoList()}</div>`;
+  setSectionHTML('sec-memos',html);
+}
+
+function saveMemo(){
+  const day = ensureDay('memos');
+  day.content = document.getElementById('memoContent').value;
+  saveData();
+  toast('备忘已保存 📝');
+  renderMemos();
+}
+
+function renderMemoList(){
+  const entries = [];
+  Object.entries(appData.memos||{}).forEach(([d,v])=>{
+    if(v.content && v.content.trim()) entries.push({date:d,...v});
+  });
+  entries.sort((a,b)=>b.date.localeCompare(a.date));
+  if(!entries.length) return '<div style="text-align:center;color:var(--t2);padding:20px">还没有备忘记录 ✍️</div>';
+  return '<div class="entry-list">'+entries.slice(0,20).map(e=>`<div class="entry-item" onclick="selectCalDay('${e.date}')">
+    <div class="entry-date">📅 ${e.date}</div>
+    <div class="entry-content">${e.content.slice(0,100)}${e.content.length>100?'...':''}</div>
+  </div>`).join('')+'</div>';
+}
+
+// ==================== HELPERS ====================
+function setSectionHTML(id,html){
+  const el = document.getElementById(id);
+  if(el) el.innerHTML = html;
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ==================== INIT ====================
+loadData();
+renderAllSections();
+
+// Handle back/forward
+window.addEventListener('hashchange',()=>{
+  loadData();
+  renderCurrentSection();
+});
+</script>
+</body>
+</html>
