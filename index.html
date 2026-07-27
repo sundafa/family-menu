@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🍽️ 家庭菜单</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1 class="logo">🍽️ 家庭菜单</h1>
+      <div class="header-actions">
+        <button id="member-btn" class="icon-btn" title="设置名字">👤</button>
+        <button id="qr-btn" class="icon-btn qr-pulse" title="二维码">📱</button>
+      </div>
+    </header>
+
+    <div id="conn-status" class="conn-status connecting">连接中...</div>
+
+    <div class="date-bar">
+      <button id="prev-day" class="nav-btn">‹</button>
+      <div id="current-date" class="date-display" title="点击回到今天"></div>
+      <button id="next-day" class="nav-btn">›</button>
+    </div>
+
+    <div class="meal-tabs">
+      <button class="meal-tab active" data-meal="breakfast">🌅 早餐</button>
+      <button class="meal-tab" data-meal="lunch">☀️ 午餐</button>
+      <button class="meal-tab" data-meal="dinner">🌙 晚餐</button>
+    </div>
+
+    <main id="menu-area" class="menu-area"></main>
+    <section id="selections-summary" class="selections-summary"></section>
+
+    <div class="bottom-bar">
+      <button id="add-dish-btn" class="bottom-btn">➕ 添加菜品</button>
+      <button id="today-btn" class="bottom-btn secondary">📅 今天</button>
+    </div>
+  </div>
+
+  <!-- 名字设置 -->
+  <div id="member-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>👤 你叫什么？</h2>
+      <p class="modal-hint">家人需要知道是谁选的菜哦</p>
+      <input type="text" id="member-input" placeholder="输入你的名字" maxlength="10" autocomplete="off">
+      <div class="modal-actions">
+        <button id="member-cancel" class="btn-cancel">取消</button>
+        <button id="member-save" class="btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 二维码 -->
+  <div id="qr-modal" class="modal hidden">
+    <div class="modal-card qr-card">
+      <h2>📱 扫码打开菜单</h2>
+      <p class="modal-hint">家人用微信/相机扫码即可加入选餐</p>
+      <div class="qr-wrap">
+        <img id="qr-image" src="" alt="二维码" onload="document.getElementById('qr-loading').style.display='none'" onerror="document.getElementById('qr-loading').textContent='二维码生成失败，请复制下方链接'">
+      </div>
+      <p id="qr-loading" style="text-align:center;color:#888;font-size:0.85rem">生成二维码中...</p>
+      <p id="qr-url" class="qr-url"></p>
+      <button id="qr-copy" class="btn-cancel" style="margin-bottom:10px">📋 复制链接</button>
+      <button id="qr-close" class="btn-primary full-width">关闭</button>
+    </div>
+  </div>
+
+  <!-- 添加菜品 -->
+  <div id="add-dish-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>➕ 添加菜品</h2>
+      <div class="form-group">
+        <label>餐次</label>
+        <select id="dish-meal">
+          <option value="breakfast">早餐</option>
+          <option value="lunch_dinner">午 / 晚餐</option>
+        </select>
+      </div>
+      <div class="form-group" id="fg-category" style="display:none">
+        <label>分类</label>
+        <select id="dish-category">
+          <option value="meat">🍖 荤菜</option>
+          <option value="vegetable">🥬 素菜</option>
+          <option value="staple">🍚 主食</option>
+          <option value="fried">🍟 炸物</option>
+        </select>
+      </div>
+      <div class="form-group" id="fg-subcategory" style="display:none">
+        <label>荤菜类型</label>
+        <select id="dish-subcategory">
+          <option value="pork">猪肉</option>
+          <option value="beef">牛肉</option>
+          <option value="chicken">鸡肉</option>
+          <option value="fish">鱼肉</option>
+          <option value="shrimp">虾类</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>菜名</label>
+        <input type="text" id="dish-name" placeholder="如：酸菜鱼" maxlength="15" autocomplete="off">
+      </div>
+      <div class="modal-actions">
+        <button id="add-dish-cancel" class="btn-cancel">取消</button>
+        <button id="add-dish-confirm" class="btn-primary">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt/dist/mqtt.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
