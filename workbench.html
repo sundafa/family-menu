@@ -774,9 +774,8 @@ function renderFinance(){
     <h3>✍️ 添加操作记录</h3>
     <div class="trade-form">
       <select id="tradeType"><option value="buy">🔴 买入</option><option value="sell">🟢 卖出</option></select>
-      <input type="text" id="tradeName" placeholder="标的名称（如：贵州茅台）">
-      <input type="number" id="tradeAmount" placeholder="数量（股/份）" step="1" class="qty-input">
-      <input type="number" id="tradePrice" placeholder="单价（元）" step="0.01">
+      <input type="text" id="tradeName" placeholder="标的名称（如：易方达蓝筹）">
+      <input type="number" id="tradeTotal" placeholder="成交金额（元）" step="0.01">
       <input type="text" id="tradeNote" placeholder="备注（选填）" class="full">
       <button class="btn btn-primary full" onclick="addTradeOp()" style="justify-content:center">＋ 添加操作</button>
     </div>
@@ -786,7 +785,7 @@ function renderFinance(){
         <span class="trade-tag">${op.type==='buy'?'买入':'卖出'}</span>
         <div class="trade-info">
           <div class="trade-name">${op.name}</div>
-          <div class="trade-detail">${op.amount}${op.amount>=100?'股':'份'} × ¥${op.price} = ¥${(op.amount*op.price).toFixed(2)} ${op.note?'· '+op.note:''}</div>
+          <div class="trade-detail">¥${(op.total!==undefined?op.total:op.amount*op.price).toFixed(2)} ${op.note?'· '+op.note:''}</div>
         </div>
         <div class="trade-del" onclick="delTradeOp(${i})" title="删除">✕</div>
       </div>`).join('')}
@@ -807,14 +806,13 @@ function renderFinance(){
 function addTradeOp(){
   const type = document.getElementById('tradeType').value;
   const name = document.getElementById('tradeName').value.trim();
-  const amount = parseInt(document.getElementById('tradeAmount').value)||0;
-  const price = parseFloat(document.getElementById('tradePrice').value)||0;
+  const total = parseFloat(document.getElementById('tradeTotal').value)||0;
   const note = document.getElementById('tradeNote').value.trim();
   if(!name){ toast('请输入标的名称'); return; }
-  if(!amount||!price){ toast('请输入数量和单价'); return; }
+  if(!total){ toast('请输入成交金额'); return; }
   const day = ensureDay('finance');
   if(!day.operations) day.operations = [];
-  day.operations.push({id:uid(),type,name,amount,price,note,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
+  day.operations.push({id:uid(),type,name,total,note,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})});
   saveData();
   renderFinance();
   toast(type==='buy'?'已记录买入 📈':'已记录卖出 📉');
@@ -834,7 +832,7 @@ function renderFinanceStats(){
   }
   let buyTotal=0, sellTotal=0, buyCount=0, sellCount=0;
   day.operations.forEach(op=>{
-    const val = op.amount*op.price;
+    const val = op.total!==undefined?op.total:op.amount*op.price;
     if(op.type==='buy'){ buyTotal+=val; buyCount++; }
     else{ sellTotal+=val; sellCount++; }
   });
@@ -859,7 +857,7 @@ function drawFinancePieFromOps(ops){
   }
   let buyVal=0, sellVal=0;
   ops.forEach(op=>{
-    const v=op.amount*op.price;
+    const v=op.total!==undefined?op.total:op.amount*op.price;
     if(op.type==='buy') buyVal+=v; else sellVal+=v;
   });
   financeChartInst = new Chart(ctx,{
