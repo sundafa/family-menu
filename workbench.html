@@ -198,6 +198,10 @@ textarea{min-height:100px}
 <div class="nav-item" onclick="switchSection('expenses')"><span class="icon">💸</span>每日开支</div>
 <div class="nav-item" onclick="switchSection('memos')"><span class="icon">📝</span>备忘录</div>
 </nav>
+<div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,.15);margin-top:auto">
+  <div id="syncStatus" style="font-size:11px;opacity:.7;margin-bottom:8px">☁️ 点击设置云同步</div>
+  <button id="syncBtn" onclick="toggleSyncSettings()" style="width:100%;padding:6px 12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;border-radius:8px;font-size:12px;cursor:pointer">☁️ 云同步设置</button>
+</div>
 </aside>
 
 <!-- Main Content -->
@@ -253,24 +257,111 @@ function getDefaultData(){
 }
 
 // ==================== PERSISTENCE ====================
-function loadData(){
-  const hash = location.hash;
-  if(hash && hash.includes('s=')){
+
+// Cloud sync config
+const CLOUD_REPO = 'sundafa/family-menu';
+const CLOUD_FILE = 'workbench-data.json';
+let cloudToken = localStorage.getItem('wb_cloud_token') || '';
+let syncTimer = null;
+let lastSyncTime = 0;
+
+function getCloudToken(){
+  // Check URL param first, then localStorage
+  const urlParams = new URLSearchParams(location.search);
+  const t = urlParams.get('token');
+  if(t){
+    cloudToken = t;
+    localStorage.setItem('wb_cloud_token', t);
+    return t;
+  }
+  return cloudToken;
+}
+
+function updateSyncStatus(msg){
+  const el = document.getElementById('syncStatus');
+  if(el) el.textContent = msg;
+}
+
+async function cloudSave(){
+  if(!cloudToken) return;
+  try{
+    updateSyncStatus('☁️ 同步中...');
+    // Get current file sha (for update)
+    let sha = '';
     try{
-      const s = hash.split('s=')[1];
-      const decoded = LZ.decompressFromEncodedURIComponent(s);
-      const parsed = JSON.parse(decoded);
-      appData = { ...getDefaultData(), ...parsed };
-      if(!appData.pianoChecklist) appData.pianoChecklist = ['哈农练习','音阶琶音','练习曲','乐曲片段','视奏训练'];
-      if(!appData.financeChecks) appData.financeChecks = [...defaultFinanceChecks];
-      if(!appData.exerciseItems) appData.exerciseItems = ['跑步','健身课程','抗阻训练'];
-      if(!appData.yearExpenses) appData.yearExpenses = {};
-      migrateData();
-    }catch(e){ appData = getDefaultData(); }
+      const resp = await fetch(`https://api.github.com/repos/${CLOUD_REPO}/contents/${CLOUD_FILE}`,{
+        headers:{'Authorization':`Bearer ${cloudToken}`,'Accept':'application/vnd.github+json'}
+      });
+      if(resp.ok){ const d=await resp.json(); sha=d.sha; }
+    }catch(e){}
+    
+    // Upload new data
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(appData))));
+    const resp = await fetch(`https://api.github.com/repos/${CLOUD_REPO}/contents/${CLOUD_FILE}`,{
+      method:'PUT',
+      headers:{'Authorization':`Bearer ${cloudToken}`,'Accept':'application/vnd.github+json','Content-Type':'application/json'},
+      body:JSON.stringify({message:'Auto sync workbench data',content:content,sha:sha||undefined})
+    });
+    if(resp.ok){
+      lastSyncTime = Date.now();
+      updateSyncStatus('☁️ 已同步 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
+    }else if(resp.status===401){
+      updateSyncStatus('⚠️ Token失效，请重新设置');
+    }else{
+      updateSyncStatus('⚠️ 同步失败');
+    }
+  }catch(e){
+    updateSyncStatus('⚠️ 网络错误');
+  }
+}
+
+async function cloudLoad(){
+  if(!cloudToken) return null;
+  try{
+    updateSyncStatus('☁️ 加载云端数据...');
+    const resp = await fetch(`https://api.github.com/repos/${CLOUD_REPO}/contents/${CLOUD_FILE}`,{
+      headers:{'Authorization':`Bearer ${cloudToken}`,'Accept':'application/vnd.github+json'}
+    });
+    if(resp.ok){
+      const d = await resp.json();
+      const decoded = decodeURIComponent(escape(atob(d.content)));
+      updateSyncStatus('☁️ 云端数据已加载');
+      return JSON.parse(decoded);
+    }
+    updateSyncStatus('☁️ 云端暂无数据');
+    return null;
+  }catch(e){
+    updateSyncStatus('⚠️ 加载失败');
+    return null;
+  }
+}
+
+function saveData(){
+  localStorage.setItem('sun_workbench_v1', JSON.stringify(appData));
+  // Auto cloud sync (debounced 3 seconds)
+  if(cloudToken){
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(()=>cloudSave(), 3000);
+  }
+}
+
+function loadData(){
+  const raw = localStorage.getItem('sun_workbench_v1');
+  if(raw){ try{ appData = { ...getDefaultData(), ...JSON.parse(raw) }; }catch(e){ appData = getDefaultData(); } }
+  else appData = getDefaultData();
+  migrateData();
+  // Async load from cloud
+  if(getCloudToken()){
+    cloudLoad().then(cloudData=>{
+      if(cloudData){
+        appData = { ...getDefaultData(), ...cloudData };
+        migrateData();
+        renderCurrentSection();
+        updateSyncStatus('☁️ 已从云端恢复 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}));
+      }
+    });
   }else{
-    const raw = localStorage.getItem('sun_workbench_v1');
-    if(raw){ try{ appData = { ...getDefaultData(), ...JSON.parse(raw) }; }catch(e){ appData = getDefaultData(); } }
-    else appData = getDefaultData();
+    updateSyncStatus('☁️ 点击设置云同步');
   }
 }
 
@@ -279,17 +370,10 @@ function migrateData(){
   Object.entries(appData.returns||{}).forEach(([k,v])=>{
     if(typeof v === 'number') appData.returns[k] = {amount:v,note:''};
   });
-  // migrate exercise: remove old fixed keys, keep user-set keys
-  // exercise items are now defined in appData.exerciseItems
-  // old data of {running:true, fitness:false, ...} will just be ignored if exerciseItems changes
-}
-
-function saveData(){
-  localStorage.setItem('sun_workbench_v1', JSON.stringify(appData));
-  try{
-    const hash = '#/s=' + LZ.compressToEncodedURIComponent(JSON.stringify(appData));
-    if(location.hash !== hash) history.replaceState(null,'',hash);
-  }catch(e){}
+  if(!appData.pianoChecklist) appData.pianoChecklist = ['哈农练习','音阶琶音','练习曲','乐曲片段','视奏训练'];
+  if(!appData.financeChecks) appData.financeChecks = [...defaultFinanceChecks];
+  if(!appData.exerciseItems) appData.exerciseItems = ['跑步','健身课程','抗阻训练'];
+  if(!appData.yearExpenses) appData.yearExpenses = {};
 }
 
 function ensureDay(key){
@@ -1230,14 +1314,87 @@ function toast(msg){
   t._tid = setTimeout(()=>t.classList.remove('show'),2000);
 }
 
+// ==================== SYNC SETTINGS ====================
+function toggleSyncSettings(){
+  const existing = document.getElementById('syncModal');
+  if(existing){ existing.remove(); return; }
+  
+  const modal = document.createElement('div');
+  modal.id = 'syncModal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <h3 style="margin:0 0 16px;font-size:18px;color:#2C3E50">☁️ 云同步设置</h3>
+      <p style="font-size:13px;color:#7F8C8D;margin-bottom:16px;line-height:1.6">
+        开启云同步后，你的数据会自动保存到 GitHub 仓库中。<br>
+        换设备、换浏览器、清缓存都不会丢失数据。
+      </p>
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;color:#2C3E50;display:block;margin-bottom:6px">GitHub Token</label>
+        <input type="password" id="syncTokenInput" placeholder="ghp_..." value="${cloudToken}" 
+          style="width:100%;padding:8px 12px;border:1px solid #E8EDF2;border-radius:8px;font-size:14px;box-sizing:border-box">
+        <div style="font-size:11px;color:#BDC3C7;margin-top:4px">
+          需要 repo 权限。<a href="https://github.com/settings/tokens/new?scopes=repo&description=workbench-sync" target="_blank" style="color:#5B9BD5">点此创建</a>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="saveSyncSettings()" style="flex:1;padding:10px;background:#5B9BD5;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">保存设置</button>
+        <button onclick="document.getElementById('syncModal').remove()" style="flex:1;padding:10px;background:#f5f5f5;color:#7F8C8D;border:none;border-radius:8px;font-size:14px;cursor:pointer">取消</button>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #E8EDF2">
+        <button onclick="manualSyncNow()" style="width:100%;padding:8px;background:#27AE60;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">🔄 立即同步一次</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
+}
+
+function saveSyncSettings(){
+  const val = document.getElementById('syncTokenInput').value.trim();
+  if(val){
+    cloudToken = val;
+    localStorage.setItem('wb_cloud_token', val);
+    updateSyncStatus('☁️ 设置成功，正在同步...');
+    cloudSave();
+    toast('✅ 云同步已开启');
+  }else{
+    localStorage.removeItem('wb_cloud_token');
+    cloudToken = '';
+    updateSyncStatus('☁️ 云同步已关闭');
+    toast('已关闭云同步');
+  }
+  document.getElementById('syncModal').remove();
+}
+
+async function manualSyncNow(){
+  if(!cloudToken){
+    const val = document.getElementById('syncTokenInput').value.trim();
+    if(val){ cloudToken=val; localStorage.setItem('wb_cloud_token',val); }
+  }
+  if(!cloudToken){ toast('请先填写Token'); return; }
+  document.getElementById('syncModal').remove();
+  await cloudSave();
+  toast('✅ 同步完成');
+}
+
 // ==================== INIT ====================
 loadData();
 renderAllSections();
 
 // Handle back/forward
 window.addEventListener('hashchange',()=>{
-  loadData();
+  // Cloud sync mode: no URL hash sharing needed
+  if(cloudToken) return;
   renderCurrentSection();
+});
+
+// Sync before leaving page
+window.addEventListener('beforeunload',()=>{
+  if(cloudToken && Date.now()-lastSyncTime>5000){
+    clearTimeout(syncTimer);
+    cloudSave();
+  }
 });
 </script>
 </body>
