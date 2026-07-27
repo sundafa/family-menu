@@ -1053,14 +1053,15 @@ function drawExpensePie(){
   if(!ctx) return;
   const day = (appData.expenses||{})[currentDate]||{};
   const vals = expenseCats.map(c=>Number(day[c.key])||0);
+  const labels = expenseCats.map(c=>c.label);
   if(vals.every(v=>v===0)){
     vals[0]=1;
-    expenseCats[0].label='暂无支出';
+    labels[0]='暂无支出';
   }
   new Chart(ctx,{
     type:'doughnut',
     data:{
-      labels:expenseCats.map(c=>c.label),
+      labels:labels,
       datasets:[{data:vals,backgroundColor:expenseCats.map(c=>c.color),borderWidth:0,borderRadius:4}]
     },
     options:{
