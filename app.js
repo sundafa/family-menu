@@ -163,13 +163,17 @@ function formatDateDisplay(dateStr) {
 
 function getMySelections() {
   if (!state.member) return [];
-  const mealData = state.selections[state.currentMeal];
+  const dateData = state.selections[state.currentDate];
+  if (!dateData) return [];
+  const mealData = dateData[state.currentMeal];
   if (!mealData) return [];
   return mealData[state.member] || [];
 }
 
 function getDishSelectors(dish) {
-  const mealData = state.selections[state.currentMeal];
+  const dateData = state.selections[state.currentDate];
+  if (!dateData) return [];
+  const mealData = dateData[state.currentMeal];
   if (!mealData) return [];
   const selectors = [];
   for (const [member, dishes] of Object.entries(mealData)) {
@@ -574,7 +578,8 @@ function renderDishChip(dish) {
 
 function renderSelections() {
   const area = document.getElementById('selections-summary');
-  const mealData = state.selections[state.currentMeal] || {};
+  const dateData = state.selections[state.currentDate] || {};
+  const mealData = dateData[state.currentMeal] || {};
   const members = Object.keys(mealData).filter(m => mealData[m] && mealData[m].length > 0);
 
   if (members.length === 0) {
