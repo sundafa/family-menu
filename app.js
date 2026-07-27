@@ -32,7 +32,7 @@ const categoryConfig = {
 
 const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
 const STORAGE_KEY = 'fm-state-v1';
-const DATA_VERSION = 3;
+const DATA_VERSION = 4;
 
 // ===== 房间ID =====
 function getRoomId() {
@@ -237,6 +237,14 @@ function connectMQTT() {
     publish({ type: 'sync_request', sender: clientId });
   });
 
+  // 心跳：每20秒广播一次在线状态
+  if (state.heartbeatTimer) clearInterval(state.heartbeatTimer);
+  state.heartbeatTimer = setInterval(() => {
+    if (state.connected && state.member) {
+      publish({ type: 'presence', sender: clientId, member: state.member });
+    }
+  }, 20000);
+
   state.mqttClient.on('reconnect', () => {
     updateConnStatus('connecting', '重连中...');
   });
@@ -277,6 +285,7 @@ function handleMessage(msg) {
       publish({
         type: 'sync_response',
         sender: clientId,
+        member: state.member,
         target: msg.sender,
         menu: state.menu,
         selections: state.selections
@@ -286,6 +295,10 @@ function handleMessage(msg) {
     case 'sync_response':
       // 收到别人的状态，合并
       if (msg.target && msg.target !== clientId) return;
+      // 记录对方在线
+      if (msg.member && !state.onlineMembers.includes(msg.member)) {
+        state.onlineMembers.push(msg.member);
+      }
       let changed = false;
       if (msg.menu) {
         const before = JSON.stringify(state.menu);
@@ -338,7 +351,7 @@ function handleMessage(msg) {
       if (msg.action === 'add') {
         if (!items.includes(msg.dish)) items.push(msg.dish);
         if (msg.date === state.currentDate) {
-          showToast(`🍽️ ${msg.member} 选了「${msg.dish}」`);
+          showToast(`🍽️ ${msg.member} 选了「${msg.dish}」(${mealNames[msg.meal]})`);
         }
       } else {
         const idx = items.indexOf(msg.dish);
@@ -383,11 +396,21 @@ function handleMessage(msg) {
         publish({
           type: 'sync_response',
           sender: clientId,
+          member: state.member,
           target: msg.sender,
           menu: state.menu,
           selections: state.selections
         });
         renderSelections();
+      }
+      break;
+
+    case 'presence':
+      if (msg.member) {
+        if (!state.onlineMembers.includes(msg.member)) {
+          state.onlineMembers.push(msg.member);
+          renderSelections();
+        }
       }
       break;
 
@@ -588,41 +611,66 @@ function renderDishChip(dish) {
 function renderSelections() {
   const area = document.getElementById('selections-summary');
   const dateData = state.selections[state.currentDate] || {};
-  const mealData = dateData[state.currentMeal] || {};
-  const members = Object.keys(mealData).filter(m => mealData[m] && mealData[m].length > 0);
+  const meals = ['breakfast', 'lunch', 'dinner'];
+  let hasAny = false;
 
-  if (members.length === 0) {
-    area.innerHTML = `
+  // 统计所有餐次的所有成员
+  const allMembers = new Set();
+  for (const meal of meals) {
+    const md = dateData[meal] || {};
+    for (const m of Object.keys(md)) {
+      if (md[m] && md[m].length > 0) allMembers.add(m);
+    }
+  }
+
+  let html = '';
+
+  // 在线家人提示
+  const others = state.onlineMembers.filter(m => m !== state.member);
+  if (others.length > 0) {
+    html += `<div class="online-bar">🟢 在线：${others.join('、')}</div>`;
+  }
+
+  for (const meal of meals) {
+    const mealData = dateData[meal] || {};
+    const members = Object.keys(mealData).filter(m => mealData[m] && mealData[m].length > 0);
+    if (members.length === 0) continue;
+    hasAny = true;
+
+    const isCurrent = meal === state.currentMeal;
+    html += `<div class="summary-card${isCurrent ? ' current-meal' : ''}">`;
+    html += `<h3 class="summary-title">${meal === 'breakfast' ? '🌅' : meal === 'lunch' ? '☀️' : '🌙'} ${mealNames[meal]}选择${isCurrent ? ' ←' : ''}</h3>`;
+
+    for (const member of members) {
+      const dishes = mealData[member];
+      const isMe = member === state.member;
+      const isOnline = state.onlineMembers.includes(member);
+
+      html += '<div class="member-selection' + (isMe ? ' me' : '') + '">';
+      html += '<div class="member-name">';
+      if (isOnline) html += '<span class="online-dot"></span>';
+      html += member + (isMe ? ' (我)' : '');
+      html += '</div>';
+      html += '<div class="member-dishes">';
+      html += dishes.map(d => `<span class="dish-tag">${d}</span>`).join('');
+      html += '</div></div>';
+    }
+
+    if (state.member && mealData[state.member] && mealData[state.member].length > 0 && isCurrent) {
+      html += '<button class="clear-btn" onclick="clearMySelections()">🗑️ 清空我本餐的选择</button>';
+    }
+
+    html += '</div>';
+  }
+
+  if (!hasAny) {
+    html += `
       <div class="summary-card">
-        <h3 class="summary-title">📋 ${mealNames[state.currentMeal]}选择</h3>
+        <h3 class="summary-title">📋 今日选择</h3>
         <p class="no-selections">还没有人选菜，快选吧！👆</p>
       </div>`;
-    return;
   }
 
-  let html = '<div class="summary-card">';
-  html += `<h3 class="summary-title">📋 ${mealNames[state.currentMeal]}选择</h3>`;
-
-  for (const member of members) {
-    const dishes = mealData[member];
-    const isMe = member === state.member;
-    const isOnline = state.onlineMembers.includes(member);
-
-    html += '<div class="member-selection' + (isMe ? ' me' : '') + '">';
-    html += '<div class="member-name">';
-    if (isOnline) html += '<span class="online-dot"></span>';
-    html += member + (isMe ? ' (我)' : '');
-    html += '</div>';
-    html += '<div class="member-dishes">';
-    html += dishes.map(d => `<span class="dish-tag">${d}</span>`).join('');
-    html += '</div></div>';
-  }
-
-  if (state.member && mealData[state.member] && mealData[state.member].length > 0) {
-    html += '<button class="clear-btn" onclick="clearMySelections()">🗑️ 清空我的选择</button>';
-  }
-
-  html += '</div>';
   area.innerHTML = html;
 }
 

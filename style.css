@@ -423,6 +423,26 @@ body {
   color: var(--primary);
 }
 
+.online-bar {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.summary-card.current-meal {
+  border: 2px solid var(--primary);
+  box-shadow: 0 2px 16px rgba(230, 57, 70, 0.12);
+}
+
+.summary-card + .summary-card {
+  margin-top: 12px;
+}
+
 /* ===== 底部栏 ===== */
 .bottom-bar {
   position: fixed;
