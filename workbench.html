@@ -1685,16 +1685,39 @@ function saveSyncSettings(){
   if(val){
     cloudToken = val;
     localStorage.setItem('wb_cloud_token', val);
-    updateSyncStatus('☁️ 设置成功，正在同步...');
-    cloudSave();
-    toast('✅ 云同步已开启');
+    updateSyncStatus('☁️ 设置成功，正在从云端恢复数据...');
+    document.getElementById('syncModal').remove();
+    // Restore from cloud first, then save merged result
+    cloudLoad().then(cloudData=>{
+      if(cloudData){
+        const dateSections = ['exercise','piano','successDiary','reflections','finance','returns','expenses','memos','yearExpenses'];
+        dateSections.forEach(k=>{
+          if(cloudData[k] && typeof cloudData[k]==='object'){
+            if(!appData[k]) appData[k]={};
+            Object.entries(cloudData[k]).forEach(([date,val])=>{
+              if(!appData[k][date]) appData[k][date]=val;
+            });
+          }
+        });
+        // Merge non-date fields (checklists, items, etc.)
+        ['pianoChecklist','exerciseItems','financeChecks'].forEach(k=>{
+          if(cloudData[k] && cloudData[k].length > 0) appData[k]=cloudData[k];
+        });
+        migrateData();
+        saveData();
+        renderCurrentSection();
+        toast('✅ 数据已从云端恢复');
+      }else{
+        toast('✅ 云同步已开启（云端暂无历史数据）');
+      }
+    });
   }else{
     localStorage.removeItem('wb_cloud_token');
     cloudToken = '';
     updateSyncStatus('☁️ 云同步已关闭');
     toast('已关闭云同步');
+    document.getElementById('syncModal').remove();
   }
-  document.getElementById('syncModal').remove();
 }
 
 async function manualSyncNow(){
@@ -1704,8 +1727,27 @@ async function manualSyncNow(){
   }
   if(!cloudToken){ toast('请先填写Token'); return; }
   document.getElementById('syncModal').remove();
-  await cloudSave();
-  toast('✅ 同步完成');
+  updateSyncStatus('☁️ 同步中...');
+  try{
+    const cloudData = await cloudLoad();
+    if(cloudData){
+      const dateSections = ['exercise','piano','successDiary','reflections','finance','returns','expenses','memos','yearExpenses'];
+      let merged=false;
+      dateSections.forEach(k=>{
+        if(cloudData[k] && typeof cloudData[k]==='object'){
+          if(!appData[k]) appData[k]={};
+          Object.entries(cloudData[k]).forEach(([date,val])=>{
+            if(!appData[k][date]){ appData[k][date]=val; merged=true; }
+          });
+        }
+      });
+      if(merged){ migrateData(); renderCurrentSection(); }
+    }
+    await cloudSave();
+    toast('✅ 双向同步完成');
+  }catch(e){
+    toast('⚠️ 同步失败: '+e.message);
+  }
 }
 
 // ==================== INIT ====================
